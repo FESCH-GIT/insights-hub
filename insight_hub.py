@@ -2,73 +2,305 @@ import streamlit as st
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import base64
+from datetime import datetime
+import json
 
-st.title("🚀 Insight Hub")
-
-# Step 1: Why (Business Justification)
-st.subheader("🔍 WHY: Business Justification")
-business_problem = st.text_area("What is the problem or opportunity?")
-expected_outcome = st.text_area("What is the expected value or impact?")
-success_criteria = st.text_area("How will we measure success?")
-
-# Step 2: What (Scope of the Project)
-st.subheader("📌 WHAT: Project Scope")
-project_type = st.selectbox(
-    "Select the project type:",
-    ["Business Intelligence", "Data Engineering", "AI & Machine Learning", "Other"]
+# Set page configuration with custom theme
+st.set_page_config(
+    page_title="Insight Hub",
+    page_icon="🔍",
+    layout="centered",
+    initial_sidebar_state="expanded"
 )
-project_details = st.text_area("Describe what needs to be built or solved.")
 
-# Step 3: How (Execution Plan)
-st.subheader("🛠 HOW: Execution Strategy")
-required_resources = st.text_area("What resources (tools, data, expertise) are needed?")
-team_size = st.number_input("Estimated team size", min_value=1, max_value=100, value=5)
-budget = st.text_input("Estimated budget for the project")
+# Custom CSS for better styling
+st.markdown("""
+    <style>
+    .stButton>button {
+        width: 100%;
+        border-radius: 5px;
+        height: 3em;
+    }
+    .main .block-container {
+        padding-top: 2rem;
+    }
+    </style>
+""", unsafe_allow_html=True)
 
-# Step 4: When (Timeline & Milestones)
-st.subheader("📅 WHEN: Timeline & Milestones")
-timeline = st.text_input("Expected timeline for completion")
-key_milestones = st.text_area("What are the key milestones or phases?")
+# Initialize session state
+if "page_index" not in st.session_state:
+    st.session_state.page_index = 0
+    st.session_state.creation_date = datetime.now().strftime("%Y-%m-%d")
+    st.session_state.last_modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-# Generate PDF Report
-def create_pdf(why, what, how, when):
-    pdf_filename = "project_summary.pdf"
-    c = canvas.Canvas(pdf_filename, pagesize=letter)
-    
-    c.drawString(100, 750, "Project Summary")
-    
-    c.drawString(100, 730, "🔍 WHY: Business Justification")
-    c.drawString(100, 710, f"Problem/Opportunity: {why['problem'][:100]}")
-    c.drawString(100, 690, f"Expected Outcome: {why['outcome'][:100]}")
-    c.drawString(100, 670, f"Success Criteria: {why['success'][:100]}")
-    
-    c.drawString(100, 650, "📌 WHAT: Project Scope")
-    c.drawString(100, 630, f"Project Type: {what['type']}")
-    c.drawString(100, 610, f"Details: {what['details'][:100]}")
-    
-    c.drawString(100, 590, "🛠 HOW: Execution Plan")
-    c.drawString(100, 570, f"Resources: {how['resources'][:100]}")
-    c.drawString(100, 550, f"Team Size: {how['team_size']}")
-    c.drawString(100, 530, f"Budget: {how['budget']}")
-    
-    c.drawString(100, 510, "📅 WHEN: Timeline & Milestones")
-    c.drawString(100, 490, f"Timeline: {when['timeline']}")
-    c.drawString(100, 470, f"Milestones: {when['milestones'][:100]}")
-    
-    c.save()
-    return pdf_filename
+# Define the page sequence with icons
+pages = [
+    "👥 WHO - Stakeholders & Team",
+    "🎯 WHY - Business Justification",
+    "📋 WHAT - Project Scope",
+    "⚙️ HOW - Execution Plan",
+    "📅 WHEN - Timeline & Milestones",
+    "📑 Summary & Export"
+]
 
-def get_pdf_download_link(pdf_filename):
-    with open(pdf_filename, "rb") as f:
-        pdf_base64 = base64.b64encode(f.read()).decode()
-    return f'<a href="data:application/pdf;base64,{pdf_base64}" download="project_summary.pdf">📥 Download PDF</a>'
+# Sidebar
+with st.sidebar:
+    st.title("🚀 Insight Hub")
+    st.markdown("---")
+    selected_page = st.radio("Navigation", pages, index=st.session_state.page_index)
+    st.markdown("---")
+    st.markdown("### Project Info")
+    st.markdown(f"Created: {st.session_state.creation_date}")
+    st.markdown(f"Last Modified: {st.session_state.last_modified}")
 
-# Generate PDF Button
-if st.button("Generate Project Summary"):
-    pdf_filename = create_pdf(
-        why={"problem": business_problem, "outcome": expected_outcome, "success": success_criteria},
-        what={"type": project_type, "details": project_details},
-        how={"resources": required_resources, "team_size": team_size, "budget": budget},
-        when={"timeline": timeline, "milestones": key_milestones}
+# Sync sidebar selection with navigation
+if selected_page != pages[st.session_state.page_index]:
+    st.session_state.page_index = pages.index(selected_page)
+
+def navigate(direction):
+    new_index = st.session_state.page_index + direction
+    if 0 <= new_index < len(pages):
+        st.session_state.page_index = new_index
+        st.session_state.last_modified = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+def validate_required_fields(fields):
+    """Validate that required fields are not empty"""
+    return all(st.session_state.get(field, "").strip() for field in fields)
+
+# Main content area
+st.title("🚀 Insight Hub - Define Your Project")
+
+# Step 1: WHO
+if pages[st.session_state.page_index] == "👥 WHO - Stakeholders & Team":
+    st.subheader("👥 WHO: Stakeholders & Team")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.owner = st.text_input(
+            "Project Owner *",
+            st.session_state.get("owner", ""),
+            help="The primary person responsible for the project"
+        )
+    with col2:
+        st.session_state.owner_role = st.selectbox(
+            "Owner's Role *",
+            ["Project Manager", "Technical Lead", "Business Analyst", "Department Head", "Other"],
+            index=0 if "owner_role" not in st.session_state else ["Project Manager", "Technical Lead", "Business Analyst", "Department Head", "Other"].index(st.session_state.owner_role)
+        )
+    
+    st.session_state.team = st.text_area(
+        "Team Members & Stakeholders *",
+        st.session_state.get("team", ""),
+        help="List key team members and stakeholders, one per line",
+        height=150
     )
-    st.markdown(get_pdf_download_link(pdf_filename), unsafe_allow_html=True)
+
+    st.session_state.department = st.multiselect(
+        "Involved Departments",
+        ["IT", "Finance", "Marketing", "Operations", "HR", "Sales", "R&D", "Legal"],
+        st.session_state.get("department", [])
+    )
+
+# Step 2: WHY
+elif pages[st.session_state.page_index] == "🎯 WHY - Business Justification":
+    st.subheader("🎯 WHY: Business Justification")
+    
+    st.session_state.problem = st.text_area(
+        "Problem Statement *",
+        st.session_state.get("problem", ""),
+        help="Clearly define the problem or opportunity",
+        height=100
+    )
+    
+    st.session_state.outcome = st.text_area(
+        "Expected Outcomes *",
+        st.session_state.get("outcome", ""),
+        help="What are the expected benefits and impact?",
+        height=100
+    )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.priority = st.select_slider(
+            "Project Priority",
+            options=["Low", "Medium", "High", "Critical"],
+            value=st.session_state.get("priority", "Medium")
+        )
+    with col2:
+        st.session_state.complexity = st.select_slider(
+            "Project Complexity",
+            options=["Simple", "Moderate", "Complex", "Very Complex"],
+            value=st.session_state.get("complexity", "Moderate")
+        )
+    
+    st.session_state.success = st.text_area(
+        "Success Criteria *",
+        st.session_state.get("success", ""),
+        help="Define measurable success criteria",
+        height=100
+    )
+
+# Step 3: WHAT
+elif pages[st.session_state.page_index] == "📋 WHAT - Project Scope":
+    st.subheader("📋 WHAT: Project Scope")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.type = st.selectbox(
+            "Project Type *",
+            ["Business Intelligence", "Data Engineering", "AI & Machine Learning", "Infrastructure", "Security", "Other"],
+            index=["Business Intelligence", "Data Engineering", "AI & Machine Learning", "Infrastructure", "Security", "Other"].index(st.session_state.get("type", "Business Intelligence"))
+        )
+    with col2:
+        st.session_state.category = st.selectbox(
+            "Project Category *",
+            ["New Development", "Enhancement", "Maintenance", "Research", "Integration"],
+            index=0 if "category" not in st.session_state else ["New Development", "Enhancement", "Maintenance", "Research", "Integration"].index(st.session_state.category)
+        )
+    
+    st.session_state.details = st.text_area(
+        "Project Details *",
+        st.session_state.get("details", ""),
+        help="Detailed description of what needs to be built or solved",
+        height=150
+    )
+    
+    st.session_state.deliverables = st.text_area(
+        "Key Deliverables",
+        st.session_state.get("deliverables", ""),
+        help="List the main deliverables, one per line",
+        height=100
+    )
+
+# Step 4: HOW
+elif pages[st.session_state.page_index] == "⚙️ HOW - Execution Plan":
+    st.subheader("⚙️ HOW: Execution Strategy")
+    
+    st.session_state.resources = st.text_area(
+        "Required Resources *",
+        st.session_state.get("resources", ""),
+        help="List all required resources, tools, and expertise",
+        height=100
+    )
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.team_size = st.number_input(
+            "Team Size *",
+            min_value=1,
+            max_value=100,
+            value=st.session_state.get("team_size", 5)
+        )
+    with col2:
+        st.session_state.budget = st.text_input(
+            "Estimated Budget *",
+            st.session_state.get("budget", ""),
+            help="Enter the estimated budget (e.g., $50,000)"
+        )
+    
+    st.session_state.risks = st.text_area(
+        "Potential Risks",
+        st.session_state.get("risks", ""),
+        help="List potential risks and mitigation strategies",
+        height=100
+    )
+
+# Step 5: WHEN
+elif pages[st.session_state.page_index] == "📅 WHEN - Timeline & Milestones":
+    st.subheader("📅 WHEN: Timeline & Milestones")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        st.session_state.start_date = st.date_input(
+            "Project Start Date *",
+            value=datetime.strptime(st.session_state.get("start_date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+        )
+    with col2:
+        st.session_state.end_date = st.date_input(
+            "Expected End Date *",
+            value=datetime.strptime(st.session_state.get("end_date", datetime.now().strftime("%Y-%m-%d")), "%Y-%m-%d")
+        )
+    
+    st.session_state.timeline = st.text_input(
+        "Project Duration *",
+        st.session_state.get("timeline", ""),
+        help="e.g., 6 months, 1 year"
+    )
+    
+    st.session_state.milestones = st.text_area(
+        "Key Milestones *",
+        st.session_state.get("milestones", ""),
+        help="List major milestones and their target dates",
+        height=150
+    )
+    
+    st.session_state.dependencies = st.text_area(
+        "Dependencies",
+        st.session_state.get("dependencies", ""),
+        help="List any external dependencies or prerequisites",
+        height=100
+    )
+
+# Step 6: Summary
+else:
+    st.subheader("📑 Project Summary")
+    
+    # Create expandable sections for each category
+    with st.expander("👥 WHO: Stakeholders & Team", expanded=True):
+        st.write(f"**Project Owner:** {st.session_state.get('owner', 'Not provided')} ({st.session_state.get('owner_role', 'Not specified')})")
+        st.write(f"**Team Members & Stakeholders:**\n{st.session_state.get('team', 'Not provided')}")
+        st.write(f"**Departments:** {', '.join(st.session_state.get('department', []))}")
+
+    with st.expander("🎯 WHY: Business Justification", expanded=True):
+        st.write(f"**Problem Statement:**\n{st.session_state.get('problem', 'Not provided')}")
+        st.write(f"**Expected Outcomes:**\n{st.session_state.get('outcome', 'Not provided')}")
+        st.write(f"**Priority:** {st.session_state.get('priority', 'Not specified')} | **Complexity:** {st.session_state.get('complexity', 'Not specified')}")
+        st.write(f"**Success Criteria:**\n{st.session_state.get('success', 'Not provided')}")
+
+    with st.expander("📋 WHAT: Project Scope", expanded=True):
+        st.write(f"**Project Type:** {st.session_state.get('type', 'Not selected')} ({st.session_state.get('category', 'Not specified')})")
+        st.write(f"**Project Details:**\n{st.session_state.get('details', 'Not provided')}")
+        st.write(f"**Key Deliverables:**\n{st.session_state.get('deliverables', 'Not provided')}")
+
+    with st.expander("⚙️ HOW: Execution Plan", expanded=True):
+        st.write(f"**Required Resources:**\n{st.session_state.get('resources', 'Not provided')}")
+        st.write(f"**Team Size:** {st.session_state.get('team_size', 'Not provided')} | **Budget:** {st.session_state.get('budget', 'Not provided')}")
+        st.write(f"**Potential Risks:**\n{st.session_state.get('risks', 'Not provided')}")
+
+    with st.expander("📅 WHEN: Timeline & Milestones", expanded=True):
+        st.write(f"**Duration:** {st.session_state.get('timeline', 'Not provided')}")
+        st.write(f"**Start Date:** {st.session_state.get('start_date', 'Not set')} | **End Date:** {st.session_state.get('end_date', 'Not set')}")
+        st.write(f"**Key Milestones:**\n{st.session_state.get('milestones', 'Not provided')}")
+        st.write(f"**Dependencies:**\n{st.session_state.get('dependencies', 'Not provided')}")
+
+    # Export options
+    st.markdown("---")
+    st.subheader("Export Options")
+    
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button("📥 Export as JSON"):
+            # Create JSON export
+            export_data = {k: v for k, v in st.session_state.items() if k not in ['page_index']}
+            json_str = json.dumps(export_data, indent=2, default=str)
+            b64 = base64.b64encode(json_str.encode()).decode()
+            href = f'<a href="data:application/json;base64,{b64}" download="project_charter.json">Download JSON</a>'
+            st.markdown(href, unsafe_allow_html=True)
+    
+    with col2:
+        if st.button("📄 Export as PDF"):
+            # Create PDF export (simplified version)
+            st.warning("PDF export functionality coming soon!")
+
+# Navigation buttons
+col1, col2 = st.columns([0.5, 0.5])
+with col1:
+    if st.session_state.page_index > 0:
+        st.button("⬅️ Previous", on_click=navigate, args=(-1,))
+with col2:
+    if st.session_state.page_index < len(pages) - 1:
+        st.button("Next ➡️", on_click=navigate, args=(1,))
+
+# Progress bar
+progress = (st.session_state.page_index + 1) / len(pages)
+st.progress(progress)
