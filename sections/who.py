@@ -1,5 +1,6 @@
 import streamlit as st
 from utils.helpers import format_expander_title
+from utils.navigation import render_navigation_buttons
 
 def show_page():
     st.subheader("👥 WHO: Stakeholders & Team")
@@ -17,3 +18,6 @@ def show_page():
         if selected_departments != st.session_state.get("department", []):
             st.session_state["department"] = selected_departments
             st.rerun()
+
+# **Call the centralized navigation buttons**
+render_navigation_buttons()

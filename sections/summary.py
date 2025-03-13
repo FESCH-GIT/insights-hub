@@ -2,6 +2,7 @@ import streamlit as st
 import json
 import base64
 from utils.helpers import is_filled, section_status_icon
+from utils.navigation import render_navigation_buttons
 
 def show_page():
     st.subheader("📑 Project Summary")
@@ -65,3 +66,6 @@ def show_page():
         "</div>", 
         unsafe_allow_html=True
     )
+            
+# **Call the centralized navigation buttons**
+render_navigation_buttons()
